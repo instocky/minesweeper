@@ -95,6 +95,22 @@
                 opacity: 1;
             }
         }
+
+        .stats-block {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .stats-content {
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .stats-content p {
+            margin: 5px 0;
+        }
     </style>
 </head>
 
@@ -105,12 +121,19 @@
         Поздравляем! Вы выиграли!
         <button class="new-game-btn" onclick="location.reload()">Новая игра</button>
     </div>
+    <script src="gameStats.js"></script>
     <script>
         const game = document.getElementById('game');
         const size = 10;
         const mineCount = 10;
         let mineLocations = [];
         let cells = [];
+        let isGameStarted = false;
+
+        // Инициализация статистики при загрузке
+        document.addEventListener('DOMContentLoaded', function () {
+            GameStats.initDailyStats();
+        });
 
         function createBoard() {
             for (let i = 0; i < size * size; i++) {
@@ -135,6 +158,12 @@
         }
 
         function handleLeftClick(e) {
+            // Начало игры при первом клике
+            if (!isGameStarted) {
+                GameStats.startGame();
+                isGameStarted = true;
+            }
+
             const index = parseInt(e.target.dataset.index);
             if (!e.target.classList.contains('flagged')) {
                 revealCell(index);
@@ -143,10 +172,16 @@
 
         function handleRightClick(e) {
             e.preventDefault();
+            // Начало игры при первом клике правой кнопкой
+            if (!isGameStarted) {
+                GameStats.startGame();
+                isGameStarted = true;
+            }
+
             const cell = e.target;
             if (!cell.classList.contains('revealed')) {
                 cell.classList.toggle('flagged');
-                checkFlags(); // Добавляем проверку после каждой установки/снятия флажка
+                checkFlags();
             }
         }
 
@@ -160,6 +195,9 @@
                 cell.classList.add('mine');
                 alert('Игра окончена! Вы попали на мину.');
                 revealAllMines();
+                // Поражение
+                GameStats.endGame(false);
+                isGameStarted = false;
             } else {
                 const mineCount = countAdjacentMines(index);
                 if (mineCount > 0) {
@@ -213,7 +251,6 @@
             });
         }
 
-        // Добавляем новую функцию проверки флажков
         function checkFlags() {
             let correctFlags = 0;
             cells.forEach((cell, index) => {
@@ -223,20 +260,32 @@
             });
             console.log(`find: ${correctFlags}`);
 
-            // Проверка на победу
             if (correctFlags === 10) {
                 const winMessage = document.getElementById('winMessage');
                 winMessage.style.display = 'block';
-                // Блокируем дальнейшие клики
                 cells.forEach(cell => {
                     cell.removeEventListener('click', handleLeftClick);
                     cell.removeEventListener('contextmenu', handleRightClick);
                 });
                 revealAllMines();
+                // Победа
+                GameStats.endGame(true);
+                isGameStarted = false;
             }
 
             return correctFlags;
         }
+
+        // Обработка новой игры
+        document.querySelector('#winMessage').addEventListener('click', function (e) {
+            if (e.target.tagName.toLowerCase() === 'button') {
+                game.innerHTML = '';
+                cells = [];
+                mineLocations = [];
+                createBoard();
+                this.style.display = 'none';
+            }
+        });
 
         createBoard();
     </script>
